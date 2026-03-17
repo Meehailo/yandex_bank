@@ -19,9 +19,12 @@
 `cargo test`
 
 ## Запуск
+сборка бинарников `cargo build` или `cargo build --release`
+
+(в debug режиме)
 конвертор:
 ```
-cargo run -p converter_cli -- \
+target/debug/converter_cli -- \
   --input <input_file> \
   --input-format <csv|txt|bin> \
   --output-format <csv|txt|bin>
@@ -29,7 +32,7 @@ cargo run -p converter_cli -- \
 
 comparer:
 ```
-cargo run -p comparer_cli -- \
+target/debug/comparer_cli -- \
   --file1 <file_path> \
   --format1 <csv|txt|bin> \
   --file2 <file_path> \
