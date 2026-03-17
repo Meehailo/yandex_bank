@@ -2,7 +2,7 @@ use std::fs::File;
 use std::io::BufReader;
 
 use clap::{Parser, ValueEnum};
-use parser::Transaction;
+use yandex_bank::Transaction;
 
 #[derive(Debug, Clone, Copy, ValueEnum)]
 enum FileFormat {
@@ -63,9 +63,9 @@ fn read_transactions(file_path: &str, file_format: FileFormat) -> Result<Vec<Tra
     let buffered_reader = BufReader::new(input_file);
 
     match file_format {
-        FileFormat::Csv => parser::read_csv(buffered_reader),
-        FileFormat::Txt => parser::read_txt(buffered_reader),
-        FileFormat::Bin => parser::read_bin(buffered_reader),
+        FileFormat::Csv => yandex_bank::read_csv(buffered_reader),
+        FileFormat::Txt => yandex_bank::read_txt(buffered_reader),
+        FileFormat::Bin => yandex_bank::read_bin(buffered_reader),
     }
     .map_err(|read_error| format!("Ошибка чтения файла {}: {}", file_path, read_error))
 }

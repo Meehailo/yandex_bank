@@ -41,9 +41,9 @@ fn run() -> Result<(), String> {
     let buffered_reader = BufReader::new(input_file);
 
     let transactions = match cli_args.input_format {
-        FileFormat::Csv => parser::read_csv(buffered_reader),
-        FileFormat::Txt => parser::read_txt(buffered_reader),
-        FileFormat::Bin => parser::read_bin(buffered_reader),
+        FileFormat::Csv => yandex_bank::read_csv(buffered_reader),
+        FileFormat::Txt => yandex_bank::read_txt(buffered_reader),
+        FileFormat::Bin => yandex_bank::read_bin(buffered_reader),
     }
     .map_err(|read_error| format!("Ошибка при чтении: {read_error}"))?;
 
@@ -51,9 +51,9 @@ fn run() -> Result<(), String> {
     let stdout_lock = stdout.lock();
 
     match cli_args.output_format {
-        FileFormat::Csv => parser::write_csv(stdout_lock, &transactions),
-        FileFormat::Txt => parser::write_txt(stdout_lock, &transactions),
-        FileFormat::Bin => parser::write_bin(stdout_lock, &transactions),
+        FileFormat::Csv => yandex_bank::write_csv(stdout_lock, &transactions),
+        FileFormat::Txt => yandex_bank::write_txt(stdout_lock, &transactions),
+        FileFormat::Bin => yandex_bank::write_bin(stdout_lock, &transactions),
     }
     .map_err(|write_error| format!("Ошибка при записи: {write_error}"))?;
 
