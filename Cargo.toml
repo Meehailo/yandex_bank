@@ -1,0 +1,6 @@
+[workspace]
+members = [
+    "parser",
+    "converter_cli",
+    "comparer_cli"
+]
