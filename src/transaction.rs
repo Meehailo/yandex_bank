@@ -38,6 +38,7 @@ pub enum TxStatus {
     Pending = 2,
 }
 
+/// Тип транзакции
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum TxType {
     /// Пополнение

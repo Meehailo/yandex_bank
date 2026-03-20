@@ -1,16 +1,26 @@
 use std::fmt;
 
+/// Ошибки парсинга
 #[derive(Debug)]
 pub enum ParserError {
+    /// отсутствует необходимое поле в документе
     MissingField(usize, usize),
+    /// Некорректный тип
     InvalidTxType(String),
+    /// некорректный статус
     InvalidTxStatus(String),
+    /// некорекктное число
     InvalidInteger(String, usize),
+    /// Нет подходящего варианта в enum
     InvalidEnum(String, usize),
+    /// Ошибка чтения csv
     CsvReadError(String),
+    /// Ошибка записи csv
     CsvWriteError(String),
+    /// Ошибка потока
     IoError(String),
-    InvalidFormat(String)
+    /// Неверный формат
+    InvalidFormat(String),
 }
 
 impl fmt::Display for ParserError {

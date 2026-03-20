@@ -1,6 +1,16 @@
+//! Библиотека для чтения и записи банковских транзакций
+//! в форматах BIN, CSV и TXT.
+//!
+//! Поддерживает:
+//! - чтение транзакций из BIN, CSV и TXT;
+//! - запись транзакций в BIN, CSV и TXT;
+//! - валидацию входных данных при парсинге
+#![warn(missing_docs)]
+
 mod bin_format;
 mod csv_format;
 mod error;
+/// Транзакция
 pub mod transaction;
 mod txt_format;
 
