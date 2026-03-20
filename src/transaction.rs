@@ -2,30 +2,82 @@ use std::{fmt::Display, str::FromStr};
 
 use crate::ParserError;
 
+/// Транзакция в банковской системе
+///
+/// Представляет одну операцию перевода, пополнения или вывода средств
+///
+/// Поле `timestamp` хранится в Unix time в миллисекундах
 #[derive(Debug, PartialEq, Eq)]
 pub struct Transaction {
+    /// Айди транзакции
     pub tx_id: i64,
+    /// Тип транзакции
     pub tx_type: TxType,
+    /// Айди отправителя
     pub from_user_id: i64,
+    /// Айди получателя
     pub to_user_id: i64,
+    /// Сумма
     pub amount: i64,
+    /// Время создания
     pub timestamp: i64,
+    /// Статус транзакции
     pub status: TxStatus,
+    /// Описание
     pub description: String,
 }
 
-#[derive(Debug, PartialEq, Eq)]
+/// Статус обработки транзакции
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum TxStatus {
-    Failure,
-    Pending,
-    Success,
+    /// Завершено
+    Success = 0,
+    /// Ошибка переводи
+    Failure = 1,
+    /// В процессе
+    Pending = 2,
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum TxType {
-    Deposit,
-    Transfer,
-    Withdrawal,
+    /// Пополнение
+    Deposit = 0,
+    /// Перевод
+    Transfer = 1,
+    /// Снятие
+    Withdrawal = 2,
+}
+
+impl TryFrom<u8> for TxType {
+    type Error = ParserError;
+
+    fn try_from(code: u8) -> Result<Self, Self::Error> {
+        match code {
+            0 => Ok(Self::Deposit),
+            1 => Ok(Self::Transfer),
+            2 => Ok(Self::Withdrawal),
+            _ => Err(ParserError::InvalidFormat(format!(
+                "invalid tx_type code: {}",
+                code
+            ))),
+        }
+    }
+}
+
+impl TryFrom<u8> for TxStatus {
+    type Error = ParserError;
+
+    fn try_from(code: u8) -> Result<Self, Self::Error> {
+        match code {
+            0 => Ok(Self::Success),
+            1 => Ok(Self::Failure),
+            2 => Ok(Self::Pending),
+            _ => Err(ParserError::InvalidFormat(format!(
+                "invalid tx_type code: {}",
+                code
+            ))),
+        }
+    }
 }
 
 impl FromStr for TxType {

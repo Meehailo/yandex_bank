@@ -1,7 +1,7 @@
 mod bin_format;
 mod csv_format;
 mod error;
-mod transaction;
+pub mod transaction;
 mod txt_format;
 
 pub use bin_format::{read_bin, write_bin};

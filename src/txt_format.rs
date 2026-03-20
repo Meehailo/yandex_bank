@@ -3,6 +3,28 @@ use crate::{ParserError, Transaction};
 use std::io::{BufRead, BufReader, Read, Write};
 use std::str::FromStr;
 
+/// Чтение txt файла и создание вектора транзакций
+///
+/// Принимает поток данных (имплементарующие read)
+///
+/// Пример:
+///
+/// ```rust
+/// use yandex_bank::Transaction;
+/// use yandex_bank::transaction::{TxStatus, TxType};
+/// let data = r#"# Record 1 (DEPOSIT)
+///            TX_TYPE: DEPOSIT
+///            TO_USER_ID: 9223372036854775807
+///            FROM_USER_ID: 0
+///            TIMESTAMP: 1633036860000
+///            DESCRIPTION: "Record number 1"
+///            TX_ID: 1000000000000000
+///            AMOUNT: 100
+///            STATUS: FAILURE"#;
+/// let reader = std::io::Cursor::new(data);
+/// let transactions = yandex_bank::read_txt(reader).unwrap();
+/// assert_eq!(transactions[0].tx_id, 1000000000000000);
+/// ```
 pub fn read_txt<R: Read>(reader: R) -> Result<Vec<Transaction>, ParserError> {
     let reader = BufReader::new(reader);
     let mut transactions = Vec::new();
@@ -42,6 +64,31 @@ pub fn read_txt<R: Read>(reader: R) -> Result<Vec<Transaction>, ParserError> {
     Ok(transactions)
 }
 
+/// Вывод данных в stdout в txt-формате
+/// Принимает вектор Транзакий
+pub fn write_txt<W: Write>(writer: W, transactions: &[Transaction]) -> Result<(), ParserError> {
+    let mut writer = writer;
+
+    for (i, trx) in transactions.iter().enumerate() {
+        writeln!(writer, "# Record {} ({})", i + 1, trx.tx_type)?;
+
+        writeln!(writer, "TX_TYPE: {}", trx.tx_type)?;
+        writeln!(writer, "TO_USER_ID: {}", trx.to_user_id)?;
+        writeln!(writer, "FROM_USER_ID: {}", trx.from_user_id)?;
+        writeln!(writer, "TIMESTAMP: {}", trx.timestamp)?;
+        writeln!(writer, "DESCRIPTION: \"{}\"", trx.description)?;
+        writeln!(writer, "TX_ID: {}", trx.tx_id)?;
+        writeln!(writer, "AMOUNT: {}", trx.amount)?;
+        writeln!(writer, "STATUS: {}", trx.status)?;
+
+        if i < transactions.len() - 1 {
+            writeln!(writer)?;
+        }
+    }
+
+    Ok(())
+}
+
 fn extract_record_number(line: &str) -> Result<usize, ParserError> {
     let parts: Vec<&str> = line.split_whitespace().collect();
     if parts.len() >= 3 {
@@ -56,7 +103,7 @@ fn extract_record_number(line: &str) -> Result<usize, ParserError> {
     }
 }
 
-pub fn parse_txt_record(lines: &[String], record_num: usize) -> Result<Transaction, ParserError> {
+fn parse_txt_record(lines: &[String], record_num: usize) -> Result<Transaction, ParserError> {
     let mut tx_id = None;
     let mut tx_type = None;
     let mut from_user_id = None;
@@ -151,29 +198,6 @@ fn parse_string(value: &str) -> Result<String, ParserError> {
     Ok(value.trim_matches('"').to_string())
 }
 
-pub fn write_txt<W: Write>(writer: W, transactions: &[Transaction]) -> Result<(), ParserError> {
-    let mut writer = writer;
-
-    for (i, trx) in transactions.iter().enumerate() {
-        writeln!(writer, "# Record {} ({})", i + 1, trx.tx_type)?;
-
-        writeln!(writer, "TX_TYPE: {}", trx.tx_type)?;
-        writeln!(writer, "TO_USER_ID: {}", trx.to_user_id)?;
-        writeln!(writer, "FROM_USER_ID: {}", trx.from_user_id)?;
-        writeln!(writer, "TIMESTAMP: {}", trx.timestamp)?;
-        writeln!(writer, "DESCRIPTION: \"{}\"", trx.description)?;
-        writeln!(writer, "TX_ID: {}", trx.tx_id)?;
-        writeln!(writer, "AMOUNT: {}", trx.amount)?;
-        writeln!(writer, "STATUS: {}", trx.status)?;
-
-        if i < transactions.len() - 1 {
-            writeln!(writer)?;
-        }
-    }
-
-    Ok(())
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -237,5 +261,28 @@ mod tests {
         assert_eq!(transactions[1].tx_type, TxType::Transfer);
         assert_eq!(transactions[1].status, TxStatus::Pending);
         assert_eq!(transactions[1].description, "Record number 2");
+    }
+
+    #[test]
+    fn test_parse_txt_record_returns_error_for_invalid_line_format() {
+        let lines = vec![
+            "TX_TYPE: DEPOSIT".to_string(),
+            "TO_USER_ID: 10".to_string(),
+            "FROM_USER_ID: 0".to_string(),
+            "TIMESTAMP 1633036860000".to_string(),
+            "DESCRIPTION: \"Record number 1\"".to_string(),
+            "TX_ID: 100".to_string(),
+            "AMOUNT: 100".to_string(),
+            "STATUS: FAILURE".to_string(),
+        ];
+
+        let error = parse_txt_record(&lines, 1).unwrap_err();
+
+        match error {
+            ParserError::InvalidFormat(message) => {
+                assert!(message.contains("Invalid line format"));
+            }
+            other_error => panic!("Expected InvalidFormat, got {:?}", other_error),
+        }
     }
 }

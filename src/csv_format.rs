@@ -5,6 +5,28 @@ use std::str::FromStr;
 
 use crate::{ParserError, Transaction};
 
+/// Чтение csv файла и создание вектора транзакций
+///
+/// Принимает поток данных (имплементирующие Read)
+///
+/// Пример:
+///
+/// ```rust
+/// use yandex_bank::Transaction;
+/// use yandex_bank::transaction::{TxStatus, TxType};
+/// let data = r#"tx_id,tx_type,from_user_id,to_user_id,amount,timestamp,status,description
+/// 1000000000000000,DEPOSIT,0,9223372036854775807,100,1633036860000,FAILURE,Record number 1
+/// 1000000000000001,TRANSFER,9223372036854775807,42,150,1633036861000,PENDING,Record number 2
+/// "#;
+///
+/// let reader = std::io::Cursor::new(data);
+/// let transactions = yandex_bank::read_csv(reader).unwrap();
+///
+/// assert_eq!(transactions[0].tx_id, 1000000000000000);
+/// assert_eq!(transactions[0].tx_type, TxType::Deposit);
+/// assert_eq!(transactions[1].tx_id, 1000000000000001);
+/// assert_eq!(transactions[1].tx_type, TxType::Transfer);
+/// ```
 pub fn read_csv<T: Read>(reader: T) -> Result<Vec<Transaction>, ParserError> {
     let mut csv_reader = csv::Reader::from_reader(reader);
     let mut transactions = Vec::new();
@@ -16,6 +38,33 @@ pub fn read_csv<T: Read>(reader: T) -> Result<Vec<Transaction>, ParserError> {
     Ok(transactions)
 }
 
+/// Вывод данных в stdout в csv-формате
+///
+/// Принимает вектор транзакций
+///
+/// Пример:
+///
+/// ```rust
+/// use yandex_bank::Transaction;
+/// use yandex_bank::transaction::{TxStatus, TxType};
+/// let transactions = vec![Transaction {
+///     tx_id: 1000000000000000,
+///     tx_type: TxType::Deposit,
+///     from_user_id: 0,
+///     to_user_id: 9223372036854775807,
+///     amount: 100,
+///     timestamp: 1633036860000,
+///     status: TxStatus::Failure,
+///     description: "Record number 1".to_string(),
+/// }];
+///
+/// let mut output = Vec::new();
+/// yandex_bank::write_csv(&mut output, &transactions).unwrap();
+///
+/// let result = String::from_utf8(output).unwrap();
+/// assert!(result.contains("TX_ID,TX_TYPE,FROM_USER_ID,TO_USER_ID,AMOUNT,TIMESTAMP,STATUS,DESCRIPTION"));
+/// assert!(result.contains("1000000000000000,DEPOSIT,0,9223372036854775807,100,1633036860000,FAILURE,Record number 1"));
+/// ```
 pub fn write_csv<T: Write>(writer: T, transactions: &[Transaction]) -> Result<(), ParserError> {
     let mut csv_writer = csv::Writer::from_writer(writer);
 

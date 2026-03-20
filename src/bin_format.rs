@@ -7,6 +7,39 @@ use crate::{ParserError, Transaction};
 const RECORD_MAGIC: &[u8; 4] = b"YPBN";
 const FIXED_PAYLOAD_SIZE: usize = 8 + 1 + 8 + 8 + 8 + 8 + 1 + 4;
 
+/// Чтение BIN-файла и создание вектора транзакций
+///
+/// Принимает поток данных, реализующий [`Read`].
+///
+/// Пример:
+///
+/// ```rust
+/// use yandex_bank::Transaction;
+/// use yandex_bank::transaction::{TxStatus, TxType};
+/// use std::io::Cursor;
+///
+/// let transactions = vec![Transaction {
+///     tx_id: 1,
+///     tx_type: TxType::Deposit,
+///     from_user_id: 0,
+///     to_user_id: 10,
+///     amount: 100,
+///     timestamp: 123456,
+///     status: TxStatus::Success,
+///     description: "hello".to_string(),
+/// }];
+///
+/// let mut buffer = Vec::new();
+/// yandex_bank::write_bin(&mut buffer, &transactions).unwrap();
+///
+/// let decoded = yandex_bank::read_bin(Cursor::new(buffer)).unwrap();
+///
+/// assert_eq!(decoded.len(), 1);
+/// assert_eq!(decoded[0].tx_id, 1);
+/// assert_eq!(decoded[0].tx_type, TxType::Deposit);
+/// assert_eq!(decoded[0].status, TxStatus::Success);
+/// assert_eq!(decoded[0].description, "hello");
+/// ```
 pub fn read_bin<R: Read>(mut reader: R) -> Result<Vec<Transaction>, ParserError> {
     let mut transactions = Vec::new();
     let mut record_index = 0usize;
@@ -22,6 +55,31 @@ pub fn read_bin<R: Read>(mut reader: R) -> Result<Vec<Transaction>, ParserError>
     }
 }
 
+/// Запись данных в BIN-формате
+///
+/// Принимает срез транзакций и поток данных, реализующий [`Write`].
+///
+/// Пример:
+///
+/// ```rust
+/// use yandex_bank::Transaction;
+/// use yandex_bank::transaction::{TxStatus, TxType};
+/// let transactions = vec![Transaction {
+///     tx_id: 1,
+///     tx_type: TxType::Deposit,
+///     from_user_id: 0,
+///     to_user_id: 10,
+///     amount: 100,
+///     timestamp: 123456,
+///     status: TxStatus::Success,
+///     description: "hello".to_string(),
+/// }];
+///
+/// let mut buffer = Vec::new();
+/// yandex_bank::write_bin(&mut buffer, &transactions).unwrap();
+///
+/// assert!(!buffer.is_empty());
+/// ```
 pub fn write_bin<W: Write>(mut writer: W, transactions: &[Transaction]) -> Result<(), ParserError> {
     for (record_index, transaction) in transactions.iter().enumerate() {
         write_one_record(&mut writer, transaction, record_index + 1)?;
@@ -91,12 +149,22 @@ fn read_one_record<R: Read>(
 
     Ok(Some(Transaction {
         tx_id,
-        tx_type: tx_type_from_code(tx_type_code, record_index)?,
+        tx_type: TxType::try_from(tx_type_code).map_err(|_| {
+            ParserError::InvalidFormat(format!(
+                "record {} has invalid tx_type code: {}",
+                record_index, tx_type_code
+            ))
+        })?,
         from_user_id,
         to_user_id,
         amount,
         timestamp,
-        status: tx_status_from_code(status_code, record_index)?,
+        status: TxStatus::try_from(status_code).map_err(|_| {
+            ParserError::InvalidFormat(format!(
+                "record {} has invalid tx_type code: {}",
+                record_index, status_code
+            ))
+        })?,
         description,
     }))
 }
@@ -135,7 +203,7 @@ fn write_one_record<W: Write>(
         .map_err(|write_error| ParserError::IoError(write_error.to_string()))?;
 
     writer
-        .write_all(&[tx_type_to_code(&transaction.tx_type)])
+        .write_all(&[transaction.tx_type as u8])
         .map_err(|write_error| ParserError::IoError(write_error.to_string()))?;
 
     writer
@@ -155,7 +223,7 @@ fn write_one_record<W: Write>(
         .map_err(|write_error| ParserError::IoError(write_error.to_string()))?;
 
     writer
-        .write_all(&[tx_status_to_code(&transaction.status)])
+        .write_all(&[transaction.status as u8])
         .map_err(|write_error| ParserError::IoError(write_error.to_string()))?;
 
     let description_length_u32 = u32::try_from(description_bytes.len()).map_err(|_| {
@@ -242,46 +310,6 @@ fn read_string<R: Read>(
             field_name, record_index, utf8_error
         ))
     })
-}
-
-fn tx_type_from_code(code: u8, record_index: usize) -> Result<TxType, ParserError> {
-    match code {
-        0 => Ok(TxType::Deposit),
-        1 => Ok(TxType::Transfer),
-        2 => Ok(TxType::Withdrawal),
-        _ => Err(ParserError::InvalidFormat(format!(
-            "record {} has invalid tx_type code: {}",
-            record_index, code
-        ))),
-    }
-}
-
-fn tx_status_from_code(code: u8, record_index: usize) -> Result<TxStatus, ParserError> {
-    match code {
-        0 => Ok(TxStatus::Success),
-        1 => Ok(TxStatus::Failure),
-        2 => Ok(TxStatus::Pending),
-        _ => Err(ParserError::InvalidFormat(format!(
-            "record {} has invalid status code: {}",
-            record_index, code
-        ))),
-    }
-}
-
-fn tx_type_to_code(tx_type: &TxType) -> u8 {
-    match tx_type {
-        TxType::Deposit => 0,
-        TxType::Transfer => 1,
-        TxType::Withdrawal => 2,
-    }
-}
-
-fn tx_status_to_code(status: &TxStatus) -> u8 {
-    match status {
-        TxStatus::Success => 0,
-        TxStatus::Failure => 1,
-        TxStatus::Pending => 2,
-    }
 }
 
 #[test]
